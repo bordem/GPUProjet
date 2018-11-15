@@ -4,7 +4,7 @@
 
 //Version de base
 void changeColorPPM(PPMImage *img)
-{   
+{
 	int i;
 	if(img){
 		for(i=0;i<img->x*img->y;i++){
@@ -19,55 +19,57 @@ int grayScale(int R,int G,int B){
 	return Y;
 }
 
-//Version Martin qui marche
+//Sequentielle
 void applyFiltre(PPMImage *img)
 {
 	printf("Debut de la fonction\n");
-	
+
 	int destinationRED[500][1000]= {0};
 	int destinationBLUE[500][1000]= {0};
 	int destinationGREEN[500][1000]= {0};
-	
+
 	int top=0;
 	int bottom=1000;
 	int left = 0;
 	int right=500;
-	
+
+	PPMPixel * new_data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
+
 	int filterSofter[25]={	0, 0, 0, 0, 0,
 							0, 1, 3, 1, 0,
 							0, 3, 5, 3, 0,
 							0, 1, 3, 1, 0,
 							0, 0, 0, 0, 0};
 	// Facteur de division = 21
-							
+
 	int filterSoften[25]= {	1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1};
-	// Facteur de division = 21
-	
+	// Facteur de division = 25
+
 	int filterShatter[25]={	1, 0, 0, 0, 1,
 							0, 0, 0, 0, 0,
 							0, 0, 0, 0, 0,
 							0, 0, 0, 0, 0,
 							1, 0, 0, 0, 1};
 	// Facteur de division = 4
-						
+
 	int filterSobel[25]= {	1, 2, 0, -2, -1,
 							4, 8, 0, -8, -4,
 							6, 12, 0,-12,-6,
 							4, 8, 0, -8, -4,
 							1, 2, 0, -2, -1};
 	// Facteur de division = 1
-	
+
 	int filterHorizontalBlur[25]= {	0, 0, 0, 0, 0,
 									0, 0, 0, 0, 0,
 									1, 2, 3, 2, 1,
 									0, 0, 0, 0, 0,
 									0, 0, 0, 0, 0};
 	//Divide: 9
-	
+
 	int filterVerticalSobel[25]={	-1,-4,-6,-4,-1,
 									-2,-8,-12,-8,-2,
 									0, 0, 0, 0, 0,
@@ -80,30 +82,30 @@ void applyFiltre(PPMImage *img)
 									-1, -1, -1, -1, -1,
 									-1, -1, -1, -1, -1};
 	//Divide: 25
-	
-	
+
+
 	int filter[25]={0};
 	for(int i=0;i<25;i++){
-		filter[i]=filterSobel[i];
+		filter[i]=filterSharpenMedium[i];
 	}
-	int divisionFactor = 1;
-		
-	
+	int divisionFactor = 25;
+
+
 	printf("Fin initialisation\n");
 	for(int y=top; y<bottom; y++){
 	// for each pixel in the image
-		for(int x=left; x<right; x++){ 
-			
+		for(int x=left; x<right; x++){
+
 			int gridCounter=0;// reset some values
-			
+
 			int finalRED = 0;
 			int finalBLUE = 0;
 			int finalGREEN = 0;
-			
+
 			for(int y2=-2; y2<=2; y2++)// and for each pixel around our
-			{	
+			{
 				for(int x2=-2; x2<=2; x2++)   //  "hot pixel"...
-				{ 
+				{
 				// Add to our running total
 					if(y>=2 && x>=2 && y<=998 && x<=498){
 						finalRED 	= finalRED 	+ img->data[(x+x2)+((y+y2)*right)].red 	 * filter[gridCounter];
@@ -113,22 +115,22 @@ void applyFiltre(PPMImage *img)
 					// Go to the next value on the filter grid
 					gridCounter++;
 				}
-				// and put it back into the right range				
+				// and put it back into the right range
 			}
 			//int H = grayScale(finalRED,finalGREEN,finalBLUE);
 			finalRED 	= finalRED 	 / divisionFactor;
 			finalBLUE 	= finalBLUE  / divisionFactor;
 			finalGREEN 	= finalGREEN / divisionFactor;
-			
-			destinationRED[x][y] 	=finalRED;
-			destinationGREEN[x][y] 	=finalGREEN;
-			destinationBLUE[x][y] 	=finalBLUE;
+
+			new_data[y*img->x+x].red=finalRED;
+			new_data[y*img->x+x].blue=finalBLUE;
+			new_data[y*img->x+x].green=finalGREEN;
 		}
 	}
-	
+
 	printf("Debut changement image\n");
-	
-	if(img){
+
+	/*if(img){
 		int x=0;
 		int y=0;
 		for(int i=0;i<img->x*img->y;i++){
@@ -142,13 +144,13 @@ void applyFiltre(PPMImage *img)
 			x=x+1;
 		}
 	}
+}*/
+img->data=new_data;
 }
-
-//Version Clement qui marche pas 
-
 int main(){
 	PPMImage *image;
 	image = readPPM("test.ppm");
-	applyFiltre(image);
+	for(int i=0;i<100;i++)
+		applyFiltre(image);
 	writePPM("mon_image2.ppm",image);
 }
