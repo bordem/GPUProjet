@@ -20,7 +20,7 @@ int grayScale(int R,int G,int B){
 	return Y;
 }
 
-//Sequentielle
+//OPENMP
 void applyFiltre(PPMImage *img)
 {
 	//printf("Debut de la fonction\n");
@@ -33,7 +33,7 @@ void applyFiltre(PPMImage *img)
 	int left = 0;
 	int right=500;
 
-	PPMPixel * new_data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
+	PPMPixel * output_data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
 
 	int filterSofter[25]={	0, 0, 0, 0, 0,
 							0, 1, 3, 1, 0,
@@ -86,9 +86,9 @@ void applyFiltre(PPMImage *img)
 
 	int filter[25]={0};
 	for(int i=0;i<25;i++){
-		filter[i]=filterHorizontalBlur[i];
+		filter[i]=filterShatter[i];
 	}
-	int divisionFactor = 9;
+	int divisionFactor = 4;
 
 	#pragma omp parallel for
 	for(int y=top; y<bottom; y++){
@@ -100,7 +100,7 @@ void applyFiltre(PPMImage *img)
 			int finalRED = 0;
 			int finalBLUE = 0;
 			int finalGREEN = 0;
-			
+
 			for(int y2=-2; y2<=2; y2++)// and for each pixel around our
 			{
 				for(int x2=-2; x2<=2; x2++)   //  "hot pixel"...
@@ -121,28 +121,15 @@ void applyFiltre(PPMImage *img)
 			finalBLUE 	= finalBLUE  / divisionFactor;
 			finalGREEN 	= finalGREEN / divisionFactor;
 
-			new_data[y*img->x+x].red=finalRED;
-			new_data[y*img->x+x].blue=finalBLUE;
-			new_data[y*img->x+x].green=finalGREEN;
+			output_data[y*img->x+x].red=finalRED;
+			output_data[y*img->x+x].blue=finalBLUE;
+			output_data[y*img->x+x].green=finalGREEN;
 		}
 	}
-	
-	//printf("Debut changement image\n");
-	
-		int x=0;
-		int y=0;
-		for(int i=0;i<img->x*img->y;i++){
-			if(x==500){
-				x=0;
-				y=y+1;
-			}
-			img->data[i].red	=	destinationRED	[x][y];
-			img->data[i].green	=	destinationGREEN[x][y];
-			img->data[i].blue	=	destinationBLUE	[x][y];
-			x=x+1;
-		}
 
-	img->data=new_data;
+	//printf("Debut changement image\n");
+
+	img->data=output_data;
 }
 int main(){
 	PPMImage *image;

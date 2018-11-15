@@ -5,7 +5,7 @@ extern "C" {
 }
 
 #define CREATOR "PARALLELISME2OPENMP"
-#define DIVISIONFACTOR 4
+
 
 extern "C" PPMImage *readPPM(const char *filename)
 {
@@ -116,25 +116,26 @@ extern "C" void writePPM(const char *filename, PPMImage *img)
 //Version PARALLELE
 
 
-__global__ void filtre(PPMPixel *g_idata,PPMPixel*g_odata,unsigned int width,unsigned int height){
+__global__ void appliquerfiltre(PPMPixel *input,PPMPixel*output,unsigned int width,unsigned int height){
     int filterShatter[25]={	1, 0, 0, 0, 1,
 							0, 0, 0, 0, 0,
 							0, 0, 0, 0, 0,
 							0, 0, 0, 0, 0,
 							1, 0, 0, 0, 1};
-    __shared__ PPMPixel smem[20][20];
-
-    int x = blockIdx.y * 16 + threadIdx.y;
-    int y = blockIdx.x * 16 + threadIdx.x;
+    int *filtre=filterShatter;
+    int div=4;
+    __shared__ PPMPixel destination[20][20];
+    int y = blockIdx.y * 16 + threadIdx.y;
+    int x = blockIdx.x * 16 + threadIdx.x;
     unsigned int index = y*width + x;
 
 if(x<0 || y<0 || x>=width || y>=height) {
-       smem[threadIdx.x][threadIdx.y].red = 0;
-       smem[threadIdx.x][threadIdx.y].blue = 0;
-       smem[threadIdx.x][threadIdx.y].green = 0;
+       destination[threadIdx.x][threadIdx.y].red = 0;
+       destination[threadIdx.x][threadIdx.y].blue = 0;
+       destination[threadIdx.x][threadIdx.y].green = 0;
    }
    else{
-       smem[threadIdx.x][threadIdx.y] = g_idata[index];
+       destination[threadIdx.x][threadIdx.y] = input[index];
    }
 
 __syncthreads();
@@ -147,18 +148,19 @@ if ((threadIdx.x >= 2) && (threadIdx.x < (18)) &&(threadIdx.y >= 2) && (threadId
 {
 for (int dy=-2;dy<=2;dy++){
     for (int dx=-2;dx<=2;dx++){
-        finalRED+=smem[threadIdx.x+dx][threadIdx.y+dy].red*filterShatter[gridCounter];
-        finalBLUE+=smem[threadIdx.x+dx][threadIdx.y+dy].blue*filterShatter[gridCounter];
-        finalGREEN+=smem[threadIdx.x+dx][threadIdx.y+dy].green*filterShatter[gridCounter];
+        finalRED+=destination[threadIdx.x+dx][threadIdx.y+dy].red*filtre[gridCounter];
+        finalBLUE+=destination[threadIdx.x+dx][threadIdx.y+dy].blue*filtre[gridCounter];
+        finalGREEN+=destination[threadIdx.x+dx][threadIdx.y+dy].green*filtre[gridCounter];
         gridCounter++;
     }
 }
-finalRED 	= finalRED 	 / DIVISIONFACTOR;
-finalBLUE 	= finalBLUE  / DIVISIONFACTOR;
-finalGREEN 	= finalGREEN / DIVISIONFACTOR;
-g_odata[index].red=finalRED;
-g_odata[index].blue=finalBLUE;
-g_odata[index].green=finalGREEN;
+finalRED 	= finalRED 	 / div;
+finalBLUE 	= finalBLUE  / div;
+finalGREEN 	= finalGREEN / div;
+
+output[index].red=finalRED;
+output[index].blue=finalBLUE;
+output[index].green=finalGREEN;
 
 
 
@@ -166,47 +168,45 @@ g_odata[index].green=finalGREEN;
     }
 }
 
-int main(){
-    PPMPixel  *data =NULL,*d_idata=NULL,*d_odata=NULL;
-    PPMImage *image;
-    image=readPPM("test2.ppm");
+
+void Filtre(PPMImage *image){
+
+    PPMPixel  *data =NULL,*input_data=NULL,*output_data=NULL;
     size_t size=image->x*image->y*sizeof(PPMPixel);
     data=(PPMPixel *)malloc(size);
-    cudaMalloc((void **)&d_idata, size);
-    cudaMalloc((void **)&d_odata, size);
+    cudaMalloc((void **)&input_data, size);
+    cudaMalloc((void **)&output_data, size);
 
     PPMImage *outImage;
     outImage = (PPMImage *)malloc(sizeof(PPMImage));
     outImage->x = image->x;
     outImage->y = image->y;
 
-    cudaMemcpy(d_idata, image->data, size, cudaMemcpyHostToDevice);
-    int GRID_W = image->x/16 +1;
-    int GRID_H = image->y/16 +1;
+    cudaMemcpy(input_data, image->data, size, cudaMemcpyHostToDevice);
+
+    int GRID_W = (image->x-1)/16 +1;
+    int GRID_H = (image->y-1)/16 +1;
      dim3 threadsPerBlock(20,20);
      dim3 blocksPerGrid(GRID_W,GRID_H);
-       filtre<<<blocksPerGrid, threadsPerBlock>>>(d_idata, d_odata, image->x,image->y);
+       appliquerfiltre<<<blocksPerGrid, threadsPerBlock>>>(input_data, output_data, image->x,image->y);
        cudaDeviceSynchronize();
-       cudaMemcpy(data, d_odata, size, cudaMemcpyDeviceToHost);
+       cudaMemcpy(data, output_data, size, cudaMemcpyDeviceToHost);
        outImage->data=data;
-       //int x=0;
-       //int y=0;
-       /*for(int i=0;i<image->x*image->y;i++){
-           if(x==500){
-               x=0;
-               y=y+1;
-           }
-           image->data[i].red	=	imageOut[i];
-           image->data[i].green	=	imageOut[i];
-           image->data[i].blue	=	imageOut[i];
-           x=x+1;
-       }*/
-       writePPM("mon_image2.ppm",outImage);
-       cudaFree(d_idata);
-       cudaFree(d_odata);
+	writePPM("mon_image2.ppm",outImage);
+       cudaFree(input_data);
+       cudaFree(output_data);
        free(data);
        free(outImage);
 
-       printf("TERMINE\n");
 
+}
+
+int main(){
+PPMImage *image;
+image=readPPM("test.ppm");
+    for(int i=0;i<100;i++)
+        Filtre(image);
+    printf("TERMINE\n");
+
+return 0;
 }

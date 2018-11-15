@@ -23,16 +23,13 @@ int grayScale(int R,int G,int B){
 void applyFiltre(PPMImage *img)
 {
 	//printf("Debut de la fonction\n");
-	int destinationRED[500][1000]= {0};
-	int destinationBLUE[500][1000]= {0};
-	int destinationGREEN[500][1000]= {0};
 
 	int top=0;
 	int bottom=1000;
 	int left = 0;
 	int right=500;
 
-	PPMPixel * new_data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
+	PPMPixel * output_data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
 
 	int filterSofter[25]={	0, 0, 0, 0, 0,
 							0, 1, 3, 1, 0,
@@ -85,9 +82,9 @@ void applyFiltre(PPMImage *img)
 
 	int filter[25]={0};
 	for(int i=0;i<25;i++){
-		filter[i]=filterSharpenMedium[i];
+		filter[i]=filterShatter[i];
 	}
-	int divisionFactor = 25;
+	int divisionFactor = 4;
 
 
 	for(int y=top; y<bottom; y++){
@@ -120,15 +117,15 @@ void applyFiltre(PPMImage *img)
 			finalBLUE 	= finalBLUE  / divisionFactor;
 			finalGREEN 	= finalGREEN / divisionFactor;
 
-			new_data[y*img->x+x].red=finalRED;
-			new_data[y*img->x+x].blue=finalBLUE;
-			new_data[y*img->x+x].green=finalGREEN;
+			output_data[y*img->x+x].red=finalRED;
+			output_data[y*img->x+x].blue=finalBLUE;
+			output_data[y*img->x+x].green=finalGREEN;
 		}
 	}
 
-	printf("Debut changement image\n");
 
-img->data=new_data;
+
+img->data=output_data;
 }
 int main(){
 	PPMImage *image;
