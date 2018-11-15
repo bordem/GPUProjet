@@ -22,7 +22,7 @@ int grayScale(int R,int G,int B){
 //Version Martin qui marche
 void applyFiltre(PPMImage *img)
 {
-	printf("Debut de la fonction\n");
+	//printf("Debut de la fonction\n");
 	
 	int destinationRED[500][1000]= {0};
 	int destinationBLUE[500][1000]= {0};
@@ -45,7 +45,7 @@ void applyFiltre(PPMImage *img)
 							1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1,
 							1, 1, 1, 1, 1};
-	// Facteur de division = 21
+	// Facteur de division = 25
 	
 	int filterShatter[25]={	1, 0, 0, 0, 1,
 							0, 0, 0, 0, 0,
@@ -84,12 +84,12 @@ void applyFiltre(PPMImage *img)
 	
 	int filter[25]={0};
 	for(int i=0;i<25;i++){
-		filter[i]=filterSobel[i];
+		filter[i]=filterShatter[i];
 	}
-	int divisionFactor = 1;
+	int divisionFactor = 4;
 		
 	
-	printf("Fin initialisation\n");
+	//printf("Fin initialisation\n");
 	for(int y=top; y<bottom; y++){
 	// for each pixel in the image
 		for(int x=left; x<right; x++){ 
@@ -126,7 +126,7 @@ void applyFiltre(PPMImage *img)
 		}
 	}
 	
-	printf("Debut changement image\n");
+	//printf("Debut changement image\n");
 	
 	if(img){
 		int x=0;
@@ -148,7 +148,12 @@ void applyFiltre(PPMImage *img)
 
 int main(){
 	PPMImage *image;
-	image = readPPM("test.ppm");
-	applyFiltre(image);
-	writePPM("mon_image2.ppm",image);
+	image = readPPM("test100.ppm");
+	#pragma omp parallel for 
+	for(int i=0;i<100;i++){		
+		//image = readPPM("test1000.ppm");
+		printf("%d\n",i);
+		applyFiltre(image);
+		writePPM("test100.ppm",image);
+	}
 }
