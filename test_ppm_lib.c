@@ -130,21 +130,6 @@ void applyFiltre(PPMImage *img)
 
 	printf("Debut changement image\n");
 
-	/*if(img){
-		int x=0;
-		int y=0;
-		for(int i=0;i<img->x*img->y;i++){
-			if(x==500){
-				x=0;
-				y=y+1;
-			}
-			img->data[i].red	=	destinationRED	[x][y];
-			img->data[i].green	=	destinationGREEN[x][y];
-			img->data[i].blue	=	destinationBLUE	[x][y];
-			x=x+1;
-		}
-	}
-}*/
 img->data=new_data;
 }
 int main(){
